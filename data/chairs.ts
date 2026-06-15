@@ -14,7 +14,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-amber-50 via-orange-50 to-yellow-100',
     materials: ['Acero tubular cromado', 'Cuero Eisengarn'],
     origin: 'Alemania',
-    modelSrc: undefined,
   },
   {
     id: 2,
@@ -29,7 +28,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-red-50 via-blue-50 to-yellow-50',
     materials: ['Madera lacada', 'Pintura primaria'],
     origin: 'Países Bajos',
-    modelSrc: undefined,
   },
   {
     id: 3,
@@ -44,7 +42,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-zinc-100 via-stone-50 to-amber-50',
     materials: ['Acero inoxidable pulido', 'Cuero Vacquero'],
     origin: 'Alemania',
-    modelSrc: undefined,
   },
   {
     id: 4,
@@ -59,7 +56,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-stone-100 via-amber-50 to-stone-200',
     materials: ['Contrachapado de nogal', 'Cuero negro', 'Aluminio fundido'],
     origin: 'Estados Unidos',
-    modelSrc: undefined,
   },
   {
     id: 5,
@@ -74,7 +70,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-slate-50 via-gray-100 to-zinc-100',
     materials: ['Fibra de vidrio reforzada', 'Aluminio', 'Lana Saarinen'],
     origin: 'Estados Unidos',
-    modelSrc: undefined,
   },
   {
     id: 6,
@@ -89,7 +84,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-rose-50 via-pink-50 to-stone-100',
     materials: ['Fibra de vidrio', 'Acero cromado', 'Relleno de espuma'],
     origin: 'Estados Unidos',
-    modelSrc: undefined,
   },
   {
     id: 7,
@@ -104,7 +98,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-sky-50 via-blue-50 to-slate-100',
     materials: ['Fibra de vidrio', 'Base de aluminio', 'Tela o cuero'],
     origin: 'Dinamarca',
-    modelSrc: undefined,
   },
   {
     id: 8,
@@ -119,7 +112,6 @@ export const chairs: Chair[] = [
     posterGradient: 'from-violet-50 via-purple-50 to-fuchsia-50',
     materials: ['Poliuretano rígido', 'Polipropileno'],
     origin: 'Dinamarca',
-    modelSrc: undefined,
   },
 ]
 

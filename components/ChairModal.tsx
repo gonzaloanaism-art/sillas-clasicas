@@ -20,7 +20,8 @@ interface ChairModalProps {
 }
 
 export default function ChairModal({ chair, onClose }: ChairModalProps) {
-  const stlSrc = `/models/${chair.slug}.stl`
+  const modelSrc = chair.modelFile ? `/models/${chair.modelFile}` : `/models/${chair.slug}.stl`
+  const ext = modelSrc.split('.').pop()?.toUpperCase() ?? 'STL'
   const badgeClass = eraColors[chair.era] ?? 'bg-zinc-100 text-zinc-600 ring-zinc-200'
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function ChairModal({ chair, onClose }: ChairModalProps) {
       >
         {/* ── 3D Viewer ── */}
         <div className="lg:w-[58%] min-h-64 lg:min-h-0 bg-zinc-50 flex-shrink-0">
-          <STLViewer src={stlSrc} chairName={chair.name} />
+          <STLViewer src={modelSrc} chairName={chair.name} />
         </div>
 
         {/* ── Info panel ── */}
@@ -109,18 +110,18 @@ export default function ChairModal({ chair, onClose }: ChairModalProps) {
           {/* Download */}
           <div className="mt-auto pt-4 border-t border-zinc-100">
             <a
-              href={stlSrc}
-              download={`${chair.slug}.stl`}
+              href={modelSrc}
+              download={chair.modelFile ?? `${chair.slug}.stl`}
               className="flex items-center justify-center gap-2 w-full rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 cursor-pointer"
             >
               <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M10 3v10M6 9l4 4 4-4" />
                 <path d="M3 15h14" />
               </svg>
-              Descargar STL
+              Descargar {ext}
             </a>
             <p className="mt-2 text-center text-[10px] text-zinc-400">
-              {chair.slug}.stl
+              {chair.modelFile ?? `${chair.slug}.stl`}
             </p>
           </div>
         </div>

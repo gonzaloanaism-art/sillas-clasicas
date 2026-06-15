@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 interface STLViewerProps {
@@ -11,6 +12,16 @@ interface STLViewerProps {
 }
 
 type Status = 'loading' | 'ready' | 'error'
+
+function centerAndScale(object: THREE.Object3D, targetSize = 3) {
+  const box = new THREE.Box3().setFromObject(object)
+  const center = box.getCenter(new THREE.Vector3())
+  const size = box.getSize(new THREE.Vector3())
+  const maxDim = Math.max(size.x, size.y, size.z) || 1
+  const scale = targetSize / maxDim
+  object.position.sub(center)
+  object.scale.setScalar(scale)
+}
 
 export default function STLViewer({ src, chairName }: STLViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -28,7 +39,6 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0xf9f9f9)
 
-    // Subtle grid floor
     const grid = new THREE.GridHelper(12, 24, 0xe4e4e7, 0xe4e4e7)
     grid.position.y = -1.6
     scene.add(grid)
@@ -56,7 +66,7 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
     fill.position.set(-4, 2, -3)
     scene.add(fill)
 
-    // — Orbit controls —
+    // — Controls —
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.06
@@ -64,53 +74,72 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
     controls.autoRotateSpeed = 1.2
     controls.minDistance = 1
     controls.maxDistance = 30
-    controls.target.set(0, 0, 0)
+    renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false })
 
-    // Stop auto-rotate when user interacts
-    renderer.domElement.addEventListener('pointerdown', () => {
-      controls.autoRotate = false
+    // — Material (shared) —
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0x1c1c1e,
+      roughness: 0.55,
+      metalness: 0.08,
+      clearcoat: 0.15,
     })
 
-    // — Load STL —
-    const loader = new STLLoader()
-    loader.load(
-      src,
-      (geometry) => {
-        if (disposed) return
-        geometry.computeVertexNormals()
-        geometry.center()
+    const onError = () => { if (!disposed) setStatus('error') }
 
-        // Scale to fit ~3 units using geometry bounding box
-        geometry.computeBoundingBox()
-        const geoBox = geometry.boundingBox ?? new THREE.Box3()
-        const size = geoBox.getSize(new THREE.Vector3())
-        const maxDim = Math.max(size.x, size.y, size.z) || 1
-        const scale = 3 / maxDim
+    const ext = src.split('.').pop()?.toLowerCase()
 
-        const material = new THREE.MeshPhysicalMaterial({
-          color: 0x1c1c1e,
-          roughness: 0.55,
-          metalness: 0.08,
-          clearcoat: 0.15,
-        })
-        const mesh = new THREE.Mesh(geometry, material)
-        mesh.scale.setScalar(scale)
-        mesh.castShadow = true
+    if (ext === 'obj') {
+      const loader = new OBJLoader()
+      loader.load(
+        src,
+        (group) => {
+          if (disposed) return
+          group.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.material = material
+              child.castShadow = true
+            }
+          })
+          centerAndScale(group)
+          const box = new THREE.Box3().setFromObject(group)
+          group.position.y += -box.min.y - 1.6
+          scene.add(group)
+          setStatus('ready')
+        },
+        undefined,
+        onError,
+      )
+    } else {
+      // Default: STL
+      const loader = new STLLoader()
+      loader.load(
+        src,
+        (geometry) => {
+          if (disposed) return
+          geometry.computeVertexNormals()
+          geometry.center()
 
-        // Sit the mesh on the grid after scaling
-        const scaledBox = new THREE.Box3().setFromObject(mesh)
-        mesh.position.y = -scaledBox.min.y - 1.6
-        scene.add(mesh)
+          geometry.computeBoundingBox()
+          const geoBox = geometry.boundingBox ?? new THREE.Box3()
+          const size = geoBox.getSize(new THREE.Vector3())
+          const maxDim = Math.max(size.x, size.y, size.z) || 1
+          const scale = 3 / maxDim
 
-        setStatus('ready')
-      },
-      undefined,
-      () => {
-        if (!disposed) setStatus('error')
-      },
-    )
+          const mesh = new THREE.Mesh(geometry, material)
+          mesh.scale.setScalar(scale)
+          mesh.castShadow = true
 
-    // — Render loop —
+          const scaledBox = new THREE.Box3().setFromObject(mesh)
+          mesh.position.y = -scaledBox.min.y - 1.6
+          scene.add(mesh)
+          setStatus('ready')
+        },
+        undefined,
+        onError,
+      )
+    }
+
+    // — Loop —
     const animate = () => {
       animId = requestAnimationFrame(animate)
       controls.update()
@@ -135,9 +164,7 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
       ro.disconnect()
       controls.dispose()
       renderer.dispose()
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement)
-      }
+      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement)
     }
   }, [src])
 
@@ -145,7 +172,6 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" aria-label={`Modelo 3D de ${chairName}`} />
 
-      {/* Loading */}
       {status === 'loading' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-50">
           <div className="w-8 h-8 rounded-full border-2 border-zinc-200 border-t-zinc-700 animate-spin" />
@@ -153,7 +179,6 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
         </div>
       )}
 
-      {/* Error / no file */}
       {status === 'error' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-zinc-50 px-8 text-center">
           <svg viewBox="0 0 48 48" className="w-12 h-12 text-zinc-200" fill="currentColor" aria-hidden="true">
@@ -166,15 +191,12 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
             <p className="text-sm font-medium text-zinc-500">Modelo no disponible</p>
             <p className="mt-1 text-xs text-zinc-400">
               Sube el archivo a{' '}
-              <code className="font-mono text-zinc-500">
-                /public/models/{src.split('/').pop()}
-              </code>
+              <code className="font-mono text-zinc-500">public/models/{src.split('/').pop()}</code>
             </p>
           </div>
         </div>
       )}
 
-      {/* Controls hint */}
       {status === 'ready' && (
         <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-zinc-400 pointer-events-none select-none tracking-wide">
           Arrastra · Scroll para zoom
