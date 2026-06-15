@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // model-viewer is a web component — suppress the "unrecognized DOM element" warning
+  reactStrictMode: true,
 };
 
 export default nextConfig;
