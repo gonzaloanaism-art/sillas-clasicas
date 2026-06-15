@@ -14,14 +14,22 @@ const eraColors: Record<string, string> = {
   'Pop Design': 'bg-violet-50 text-violet-700 ring-violet-200',
 }
 
+function resolveModelSrc(chair: Chair): string | string[] {
+  if (!chair.modelFile) return `/models/${chair.slug}.stl`
+  if (Array.isArray(chair.modelFile)) return chair.modelFile.map(f => `/models/${f}`)
+  return `/models/${chair.modelFile}`
+}
+
 interface ChairModalProps {
   chair: Chair
   onClose: () => void
 }
 
 export default function ChairModal({ chair, onClose }: ChairModalProps) {
-  const modelSrc = chair.modelFile ? `/models/${chair.modelFile}` : `/models/${chair.slug}.stl`
-  const ext = modelSrc.split('.').pop()?.toUpperCase() ?? 'STL'
+  const modelSrc = resolveModelSrc(chair)
+  const parts = Array.isArray(modelSrc) ? modelSrc : [modelSrc]
+  const files = Array.isArray(chair.modelFile) ? chair.modelFile : [chair.modelFile ?? `${chair.slug}.stl`]
+  const isMultiPart = parts.length > 1
   const badgeClass = eraColors[chair.era] ?? 'bg-zinc-100 text-zinc-600 ring-zinc-200'
 
   useEffect(() => {
@@ -109,20 +117,42 @@ export default function ChairModal({ chair, onClose }: ChairModalProps) {
 
           {/* Download */}
           <div className="mt-auto pt-4 border-t border-zinc-100">
-            <a
-              href={modelSrc}
-              download={chair.modelFile ?? `${chair.slug}.stl`}
-              className="flex items-center justify-center gap-2 w-full rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 cursor-pointer"
-            >
-              <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M10 3v10M6 9l4 4 4-4" />
-                <path d="M3 15h14" />
-              </svg>
-              Descargar {ext}
-            </a>
-            <p className="mt-2 text-center text-[10px] text-zinc-400">
-              {chair.modelFile ?? `${chair.slug}.stl`}
-            </p>
+            {isMultiPart ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-semibold tracking-[0.15em] text-zinc-400 uppercase mb-1">
+                  Descargar partes ({parts.length})
+                </p>
+                {parts.map((href, i) => (
+                  <a
+                    key={href}
+                    href={href}
+                    download={files[i]}
+                    className="flex items-center justify-center gap-2 w-full rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 cursor-pointer"
+                  >
+                    <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M10 3v10M6 9l4 4 4-4" />
+                      <path d="M3 15h14" />
+                    </svg>
+                    Parte {i + 1} — {files[i]}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <>
+                <a
+                  href={parts[0]}
+                  download={files[0]}
+                  className="flex items-center justify-center gap-2 w-full rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 cursor-pointer"
+                >
+                  <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M10 3v10M6 9l4 4 4-4" />
+                    <path d="M3 15h14" />
+                  </svg>
+                  Descargar {files[0].split('.').pop()?.toUpperCase()}
+                </a>
+                <p className="mt-2 text-center text-[10px] text-zinc-400">{files[0]}</p>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -7,25 +7,17 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 interface STLViewerProps {
-  src: string
+  src: string | string[]
   chairName: string
+  compact?: boolean
 }
 
 type Status = 'loading' | 'ready' | 'error'
 
-function centerAndScale(object: THREE.Object3D, targetSize = 3) {
-  const box = new THREE.Box3().setFromObject(object)
-  const center = box.getCenter(new THREE.Vector3())
-  const size = box.getSize(new THREE.Vector3())
-  const maxDim = Math.max(size.x, size.y, size.z) || 1
-  const scale = targetSize / maxDim
-  object.position.sub(center)
-  object.scale.setScalar(scale)
-}
-
-export default function STLViewer({ src, chairName }: STLViewerProps) {
+export default function STLViewer({ src, chairName, compact = false }: STLViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<Status>('loading')
+  const srcKey = Array.isArray(src) ? src.join('|') : src
 
   useEffect(() => {
     const container = containerRef.current
@@ -37,30 +29,31 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
 
     // — Scene —
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xf9f9f9)
-
-    const grid = new THREE.GridHelper(12, 24, 0xe4e4e7, 0xe4e4e7)
-    grid.position.y = -1.6
-    scene.add(grid)
+    if (!compact) {
+      scene.background = new THREE.Color(0xf9f9f9)
+      const grid = new THREE.GridHelper(12, 24, 0xe4e4e7, 0xe4e4e7)
+      grid.position.y = -1.6
+      scene.add(grid)
+    }
 
     // — Camera —
-    const w = container.clientWidth
-    const h = container.clientHeight
+    const w = container.clientWidth || 400
+    const h = container.clientHeight || 300
     const camera = new THREE.PerspectiveCamera(42, w / h, 0.01, 500)
     camera.position.set(3, 2.5, 4)
 
     // — Renderer —
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: compact })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setSize(w, h)
-    renderer.shadowMap.enabled = true
+    if (!compact) renderer.shadowMap.enabled = true
     container.appendChild(renderer.domElement)
 
     // — Lights —
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
+    scene.add(new THREE.AmbientLight(0xffffff, compact ? 1.2 : 0.7))
     const key = new THREE.DirectionalLight(0xffffff, 1.2)
     key.position.set(4, 8, 5)
-    key.castShadow = true
+    if (!compact) key.castShadow = true
     scene.add(key)
     const fill = new THREE.DirectionalLight(0xf0f4ff, 0.4)
     fill.position.set(-4, 2, -3)
@@ -70,13 +63,18 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.06
-    controls.autoRotate = !prefersReducedMotion
-    controls.autoRotateSpeed = 1.2
-    controls.minDistance = 1
-    controls.maxDistance = 30
-    renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false })
+    controls.autoRotate = true
+    controls.autoRotateSpeed = compact ? 2 : 1.2
+    if (compact) {
+      controls.enabled = false
+    } else {
+      controls.autoRotate = !prefersReducedMotion
+      controls.minDistance = 1
+      controls.maxDistance = 30
+      renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false })
+    }
 
-    // — Material (shared) —
+    // — Material —
     const material = new THREE.MeshPhysicalMaterial({
       color: 0x1c1c1e,
       roughness: 0.55,
@@ -84,59 +82,115 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
       clearcoat: 0.15,
     })
 
-    const onError = () => { if (!disposed) setStatus('error') }
+    // Centers + scales the group, places bottom on floor, aims camera.
+    // Uses a wrapper so scale is always applied around the content center (not a shifted origin).
+    function finalizeGroup(group: THREE.Group): THREE.Group {
+      // Auto-orient: rotate so the longest dimension becomes Y (up axis).
+      // STL files for 3D printing are often exported lying flat on the print bed.
+      group.updateWorldMatrix(true, true)
+      const size0 = new THREE.Box3().setFromObject(group).getSize(new THREE.Vector3())
+      if (size0.x >= size0.y && size0.x >= size0.z) {
+        // X is tallest → rotate around Z so X → Y
+        group.rotation.z += Math.PI / 2
+      } else if (size0.z >= size0.y && size0.z >= size0.x) {
+        // Z is tallest → rotate around X so Z → Y
+        group.rotation.x += -Math.PI / 2
+      }
 
-    const ext = src.split('.').pop()?.toLowerCase()
+      group.updateWorldMatrix(true, true)
+      const box = new THREE.Box3().setFromObject(group)
+      const center = box.getCenter(new THREE.Vector3())
+      const size = box.getSize(new THREE.Vector3())
+      const maxDim = Math.max(size.x, size.y, size.z) || 1
+      const scale = 3 / maxDim
 
-    if (ext === 'obj') {
+      // Inner group shifts content to origin; wrapper scales from origin
+      group.position.sub(center)
+      const wrapper = new THREE.Group()
+      wrapper.add(group)
+      wrapper.scale.setScalar(scale)
+
+      // Place bottom on floor
+      const scaledBox = new THREE.Box3().setFromObject(wrapper)
+      wrapper.position.y = -scaledBox.min.y - 1.6
+
+      const finalBox = new THREE.Box3().setFromObject(wrapper)
+      const finalCenter = finalBox.getCenter(new THREE.Vector3())
+      controls.target.copy(finalCenter)
+      camera.lookAt(finalCenter)
+      controls.update()
+
+      return wrapper
+    }
+
+    const srcs = Array.isArray(src) ? src : [src]
+    const firstExt = srcs[0].split('.').pop()?.toLowerCase()
+
+    if (firstExt === 'obj') {
+      // OBJ — single file only
       const loader = new OBJLoader()
       loader.load(
-        src,
+        srcs[0],
         (group) => {
           if (disposed) return
           group.traverse((child) => {
             if (child instanceof THREE.Mesh) {
               child.material = material
-              child.castShadow = true
+              if (!compact) child.castShadow = true
             }
           })
-          centerAndScale(group)
-          const box = new THREE.Box3().setFromObject(group)
-          group.position.y += -box.min.y - 1.6
-          scene.add(group)
+          // OBJ files commonly exported Z-up; rotate to Y-up
+          group.rotation.x = -Math.PI / 2
+          scene.add(finalizeGroup(group))
           setStatus('ready')
         },
         undefined,
-        onError,
+        () => { if (!disposed) setStatus('error') },
       )
     } else {
-      // Default: STL
+      // STL — one or multiple parts loaded into a shared group
+      const group = new THREE.Group()
+      let loaded = 0
+      let failed = 0
+      const total = srcs.length
       const loader = new STLLoader()
-      loader.load(
-        src,
-        (geometry) => {
-          if (disposed) return
-          geometry.computeVertexNormals()
-          geometry.center()
 
-          geometry.computeBoundingBox()
-          const geoBox = geometry.boundingBox ?? new THREE.Box3()
-          const size = geoBox.getSize(new THREE.Vector3())
-          const maxDim = Math.max(size.x, size.y, size.z) || 1
-          const scale = 3 / maxDim
+      srcs.forEach((fileSrc) => {
+        loader.load(
+          fileSrc,
+          (geometry) => {
+            if (disposed) return
+            geometry.computeVertexNormals()
 
-          const mesh = new THREE.Mesh(geometry, material)
-          mesh.scale.setScalar(scale)
-          mesh.castShadow = true
+            const mesh = new THREE.Mesh(geometry, material)
+            if (!compact) mesh.castShadow = true
+            group.add(mesh)
 
-          const scaledBox = new THREE.Box3().setFromObject(mesh)
-          mesh.position.y = -scaledBox.min.y - 1.6
-          scene.add(mesh)
-          setStatus('ready')
-        },
-        undefined,
-        onError,
-      )
+            loaded++
+            if (loaded + failed === total) {
+              if (loaded > 0) {
+                scene.add(finalizeGroup(group))
+                setStatus('ready')
+              } else {
+                setStatus('error')
+              }
+            }
+          },
+          undefined,
+          () => {
+            if (disposed) return
+            failed++
+            if (loaded + failed === total) {
+              if (loaded > 0) {
+                scene.add(finalizeGroup(group))
+                setStatus('ready')
+              } else {
+                setStatus('error')
+              }
+            }
+          },
+        )
+      })
     }
 
     // — Loop —
@@ -166,7 +220,23 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
       renderer.dispose()
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement)
     }
-  }, [src])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [srcKey, compact])
+
+  if (compact) {
+    return (
+      <div className="w-full h-full">
+        <div
+          ref={containerRef}
+          className="w-full h-full"
+          style={{ pointerEvents: 'none' }}
+          aria-hidden="true"
+        />
+      </div>
+    )
+  }
+
+  const firstSrc = Array.isArray(src) ? src[0] : src
 
   return (
     <div className="relative w-full h-full">
@@ -191,7 +261,7 @@ export default function STLViewer({ src, chairName }: STLViewerProps) {
             <p className="text-sm font-medium text-zinc-500">Modelo no disponible</p>
             <p className="mt-1 text-xs text-zinc-400">
               Sube el archivo a{' '}
-              <code className="font-mono text-zinc-500">public/models/{src.split('/').pop()}</code>
+              <code className="font-mono text-zinc-500">public/models/{firstSrc.split('/').pop()}</code>
             </p>
           </div>
         </div>

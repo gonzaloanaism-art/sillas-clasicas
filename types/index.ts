@@ -8,7 +8,7 @@ export interface Chair {
   style: string
   description: string
   posterGradient: string
-  modelFile?: string   // e.g. 'wassily-chair.stl' or 'panton-chair.obj'
+  modelFile?: string | string[]   // single file or array of parts
   materials: string[]
   origin: string
 }

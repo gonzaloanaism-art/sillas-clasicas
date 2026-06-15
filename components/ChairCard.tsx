@@ -1,6 +1,9 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import type { Chair } from '@/types'
+
+const STLViewer = dynamic(() => import('./STLViewer'), { ssr: false })
 
 const eraColors: Record<string, string> = {
   'Bauhaus & Vanguardia': 'bg-amber-50 text-amber-700 ring-amber-200',
@@ -15,8 +18,17 @@ interface ChairCardProps {
   onClick: () => void
 }
 
+function resolveModelSrc(chair: import('@/types').Chair): string | string[] {
+  if (!chair.modelFile) return `/models/${chair.slug}.stl`
+  if (Array.isArray(chair.modelFile)) return chair.modelFile.map(f => `/models/${f}`)
+  return `/models/${chair.modelFile}`
+}
+
 export default function ChairCard({ chair, onClick }: ChairCardProps) {
   const badgeClass = eraColors[chair.era] ?? 'bg-zinc-100 text-zinc-600 ring-zinc-200'
+  const modelSrc = resolveModelSrc(chair)
+  // For compact card preview, show only the first part to avoid print-layout scatter
+  const previewSrc = Array.isArray(modelSrc) ? modelSrc[0] : modelSrc
 
   return (
     <article
@@ -29,7 +41,9 @@ export default function ChairCard({ chair, onClick }: ChairCardProps) {
     >
       {/* Visual area */}
       <div className={`relative aspect-4/3 bg-gradient-to-br ${chair.posterGradient} flex items-center justify-center overflow-hidden`}>
-        <Placeholder name={chair.name} />
+        <div className="absolute inset-0">
+          <STLViewer src={previewSrc} chairName={chair.name} compact />
+        </div>
 
         {/* Hover overlay — expand icon */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/5 transition-colors duration-200">
@@ -68,22 +82,5 @@ export default function ChairCard({ chair, onClick }: ChairCardProps) {
         </div>
       </div>
     </article>
-  )
-}
-
-function Placeholder({ name }: { name: string }) {
-  const initials = name.split(' ').slice(0, 2).map((w) => w[0]).join('')
-  return (
-    <div className="flex flex-col items-center gap-3 select-none">
-      <svg viewBox="0 0 80 80" className="w-16 h-16 text-zinc-300 group-hover:text-zinc-400 transition-colors duration-200" fill="currentColor" aria-hidden="true">
-        <rect x="14" y="32" width="52" height="8" rx="2" />
-        <rect x="18" y="12" width="44" height="22" rx="2" />
-        <rect x="16" y="40" width="6" height="28" rx="2" />
-        <rect x="58" y="40" width="6" height="28" rx="2" />
-        <rect x="22" y="40" width="4" height="20" rx="2" />
-        <rect x="54" y="40" width="4" height="20" rx="2" />
-      </svg>
-      <span className="text-xs font-medium tracking-widest text-zinc-300 uppercase">{initials} · 3D</span>
-    </div>
   )
 }

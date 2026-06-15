@@ -12,6 +12,7 @@ export const chairs: Chair[] = [
     description:
       'Inspirada en el manillar de una bicicleta Adler, fue la primera silla de tubo de acero curvado. Breuer la diseñó mientras estudiaba en la Bauhaus.',
     posterGradient: 'from-amber-50 via-orange-50 to-yellow-100',
+    modelFile: 'Wassily-chair.obj',
     materials: ['Acero tubular cromado', 'Cuero Eisengarn'],
     origin: 'Alemania',
     modelFile: 'Wassily-chair.obj',
@@ -41,6 +42,7 @@ export const chairs: Chair[] = [
     description:
       'Diseñada para el Pabellón Alemán de la Exposición Internacional de Barcelona. Sus patas en X evocan el trono de un rey moderno.',
     posterGradient: 'from-zinc-100 via-stone-50 to-amber-50',
+    modelFile: 'barcelona-chair.stl',
     materials: ['Acero inoxidable pulido', 'Cuero Vacquero'],
     origin: 'Alemania',
   },
@@ -55,6 +57,7 @@ export const chairs: Chair[] = [
     description:
       'El más icónico de los diseños Eames. Combina el confort de un guante de béisbol con la elegancia del contrachapado moldeado y el cuero negro.',
     posterGradient: 'from-stone-100 via-amber-50 to-stone-200',
+    modelFile: 'eames-lounge-chair.stl',
     materials: ['Contrachapado de nogal', 'Cuero negro', 'Aluminio fundido'],
     origin: 'Estados Unidos',
   },
@@ -69,6 +72,7 @@ export const chairs: Chair[] = [
     description:
       'Saarinen quería eliminar el "slum de patas" debajo de una mesa. El resultado: una sola base de pedestal que desafía la gravedad.',
     posterGradient: 'from-slate-50 via-gray-100 to-zinc-100',
+    modelFile: ['tulip-chair-body.stl', 'tulip-chair-cushion.stl', 'tulip-chair-base.stl'],
     materials: ['Fibra de vidrio reforzada', 'Aluminio', 'Lana Saarinen'],
     origin: 'Estados Unidos',
   },
@@ -97,6 +101,7 @@ export const chairs: Chair[] = [
     description:
       'Diseñada para el lobby del Hotel SAS Royal de Copenhague. Su forma de huevo crea una cápsula privada dentro del espacio público.',
     posterGradient: 'from-sky-50 via-blue-50 to-slate-100',
+    modelFile: ['egg-chair.stl', 'egg-chair-stand.stl'],
     materials: ['Fibra de vidrio', 'Base de aluminio', 'Tela o cuero'],
     origin: 'Dinamarca',
   },
@@ -111,6 +116,7 @@ export const chairs: Chair[] = [
     description:
       'La primera silla de plástico moldeado en una sola pieza de la historia. Un desafío técnico que tardó 10 años en llegar a producción masiva.',
     posterGradient: 'from-violet-50 via-purple-50 to-fuchsia-50',
+    modelFile: 'panton-chair.stl',
     materials: ['Poliuretano rígido', 'Polipropileno'],
     origin: 'Dinamarca',
   },

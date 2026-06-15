@@ -4,8 +4,9 @@
     {
       "name": "sillas-clasicas",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "3002"],
-      "port": 3002
+      "runtimeArgs": ["run", "dev"],
+      "port": 3002,
+      "autoPort": true
     }
   ]
 }
