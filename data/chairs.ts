@@ -14,6 +14,7 @@ export const chairs: Chair[] = [
     posterGradient: 'from-amber-50 via-orange-50 to-yellow-100',
     materials: ['Acero tubular cromado', 'Cuero Eisengarn'],
     origin: 'Alemania',
+    modelFile: 'Wassily-chair.obj',
   },
   {
     id: 2,
